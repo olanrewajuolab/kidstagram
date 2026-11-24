@@ -1,56 +1,61 @@
-# Welcome to your Expo app 👋
+# Kidstagram
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A safe place for kids aged 5 to 16 to build projects like games and shows, and help their friends make theirs.
+One codebase runs on the web, iPhone and Android (Expo + React Native), with Supabase as the backend.
 
-## Get started
+## Safety model (v1)
 
-1. Install dependencies
+| Rule | Where it's enforced |
+| --- | --- |
+| Parents create accounts; children can't sign up alone | `manage-child` edge function, `profiles` insert policy |
+| Parental consent recorded before any child account exists | `parental_consents` table, checked in `manage-child` |
+| Only nickname, avatar and birth month are stored for children | `profiles` schema |
+| Private by default; only approved friends see shared projects | RLS on `projects`, `can_view_project()` |
+| No direct messages and no search; friends connect by a code shared offline | No DM tables; `request_friend()` |
+| Under-13 friendships need both parents' approval | `update_friendship_status()` trigger |
+| Ages 5 to 8 can only post preset comments | `enforce_comment_rules()` trigger, text forced from `comment_presets` |
+| Text filter for emails, phone numbers, links, social handles, addresses, personal questions, unkind words | `text_problem()` trigger (server) + `src/lib/moderation.ts` (client hints) |
+| Report button on projects, steps and comments; reported items get flagged | `reports` table + `flag_reported_content()` |
+| Parents can pause or delete a child account and all its data | Parent dashboard, `manage-child` delete |
 
-   ```bash
-   npm install
-   ```
+The database rules are tested in `supabase/tests/rls_test.sql`.
 
-2. Start the app
+### Before real children use it
 
-   ```bash
-   npx expo start
-   ```
+- Replace the typed-name consent with a COPPA-approved **verifiable parental consent** method (card check, ID check or similar).
+- Write a privacy policy and children's privacy notice; have a lawyer review them against COPPA and the UK Age Appropriate Design Code.
+- Replace the starter word filter with a proper moderation service, and add image moderation when media uploads land.
+- Set up a moderator account and a review routine for flagged content.
 
-In the output, you'll find options to open the app in a
+## Getting started
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+1. Install dependencies: `npm install`
+2. Create a free project at [supabase.com](https://supabase.com).
+3. Apply the database: in the Supabase SQL editor run `supabase/migrations/0001_init.sql`, or use the Supabase CLI with `supabase db push`.
+4. Deploy the child-account function: `supabase functions deploy manage-child`.
+5. Copy `.env.example` to `.env` and fill in your project URL and anon key (Project Settings → API).
+6. Run it:
+   - Web: `npm run web`
+   - Phone: `npm start`, then scan the QR code with the Expo Go app.
 
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Project layout
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/app/                 Screens (Expo Router: every file is a route)
+  welcome.tsx            Kid / grown-up choice
+  parent/                Consent, dashboard, add child, child detail
+  kid/                   Home, new project, project page, friends
+src/lib/                 Supabase client, auth, API helpers, age bands, text filter, presets
+src/components/          UI kit and theme
+supabase/migrations/     Database schema and safety rules
+supabase/functions/      Edge functions (manage-child)
+supabase/tests/          Database safety tests
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+## Checks
 
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npm run typecheck   # TypeScript
+npm test            # unit tests for age bands and the text filter
+npm run test:db     # database safety tests (needs a local Postgres: PGHOST/PGUSER)
+```
