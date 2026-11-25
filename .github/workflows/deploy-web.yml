@@ -1,0 +1,50 @@
+name: Publish web app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Public values: the publishable key is meant to ship inside apps.
+      # Row level security in the database protects the data.
+      EXPO_PUBLIC_SUPABASE_URL: https://essfvrdqatdxwykfucsp.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_3ptNnbyhLHujJtdyS-ddow_-GiQ2Y9q
+      EXPO_BASE_URL: /kidstagram
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx expo export --platform web --output-dir dist
+      # Let deep links like /kidstagram/kid work on GitHub Pages.
+      - run: cp dist/index.html dist/404.html && touch dist/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

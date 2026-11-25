@@ -1,18 +1,23 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { screenOptions } from '@/components/nav';
+import { AuthProvider } from '@/lib/auth';
 
-SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <AuthProvider>
+      <StatusBar style="dark" />
+      <Stack screenOptions={screenOptions}>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false }} />
+        <Stack.Screen name="parent-sign-up" options={{ title: 'Grown-up sign up' }} />
+        <Stack.Screen name="parent-sign-in" options={{ title: 'Grown-up sign in' }} />
+        <Stack.Screen name="kid-sign-in" options={{ title: 'Kid sign in' }} />
+        <Stack.Screen name="parent" options={{ headerShown: false }} />
+        <Stack.Screen name="kid" options={{ headerShown: false }} />
+      </Stack>
+    </AuthProvider>
   );
 }
