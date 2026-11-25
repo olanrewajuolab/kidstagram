@@ -474,7 +474,11 @@ $$;
 create trigger friendships_guard before update on public.friendships
   for each row execute function public.guard_friendship_update();
 
-create policy projects_select on public.projects for select using (public.can_view_project(id));
+-- The direct owner/parent checks matter: a brand-new row isn't visible to can_view_project()
+-- yet, so without them "create a project and show it" fails.
+create policy projects_select on public.projects for select using (
+  owner_id = auth.uid() or public.is_parent_of(owner_id) or public.can_view_project(id)
+);
 create policy projects_insert on public.projects for insert with check (owner_id = auth.uid() and public.is_active_child());
 create policy projects_update on public.projects for update using (
   (owner_id = auth.uid() and public.is_active_child()) or public.is_moderator()

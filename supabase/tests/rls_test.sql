@@ -55,7 +55,8 @@ select pg_temp.check(public.age_band(birth_month) = 'teen', 'age band teen') fro
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b2', false);
 set role authenticated;
 insert into projects (id, owner_id, kind, title, description, visibility)
-  values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000b2', 'game', 'Space Jump', 'A jumping game in space', 'friends');
+  values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000b2', 'game', 'Space Jump', 'A jumping game in space', 'friends')
+  returning id; -- the app asks for the new row back, like this
 select pg_temp.expect_error($$insert into projects (owner_id, kind, title) values ('00000000-0000-0000-0000-0000000000b2','show','email me at bo@example.com')$$, 'text_blocked:email');
 select pg_temp.expect_error($$insert into projects (owner_id, kind, title) values ('00000000-0000-0000-0000-0000000000b2','show','call 0207 123 4567')$$, 'text_blocked:phone');
 select pg_temp.expect_error($$insert into projects (owner_id, kind, title) values ('00000000-0000-0000-0000-0000000000b2','show','add me on snapchat')$$, 'text_blocked:social');
