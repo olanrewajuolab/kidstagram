@@ -83,7 +83,7 @@ export default function ProjectScreen() {
   const postStep = () => guard(async () => {
     const problem = findTextProblem(stepText);
     if (problem) throw new Error(problemMessages[problem]);
-    await addStep(id, me, (steps.at(-1)?.position ?? 0) + 1, stepText.trim());
+    await addStep(id, me, (steps[steps.length - 1]?.position ?? 0) + 1, stepText.trim());
     setStepText('');
   });
 
