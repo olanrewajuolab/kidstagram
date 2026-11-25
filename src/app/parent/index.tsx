@@ -63,7 +63,7 @@ export default function ParentHome() {
       )}
 
       <Heading>Your children</Heading>
-      {kids.length === 0 && <Body muted>Add your first child to get them started.</Body>}
+      {kids.length === 0 && <Body muted>Kids make the games and shows. Add your first child, then you can jump straight into their Kidstagram.</Body>}
       {kids.map((k) => (
         <Card key={k.id} onPress={() => router.push(`/parent/child/${k.id}`)}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>

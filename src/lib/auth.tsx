@@ -39,14 +39,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
       data = res.data;
     }
-    setProfile(data as Profile | null);
+    // Work out consent before publishing the profile, so screens never see a parent without it.
+    let consent = false;
     if (data?.role === 'parent') {
       const { count } = await supabase
         .from('parental_consents')
         .select('id', { count: 'exact', head: true })
         .eq('parent_id', s.user.id);
-      setHasConsent(Boolean(count));
+      consent = Boolean(count);
     }
+    setHasConsent(consent);
+    setProfile(data as Profile | null);
     setLoading(false);
   }, []);
 

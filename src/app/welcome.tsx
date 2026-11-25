@@ -1,10 +1,15 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { Text, View } from 'react-native';
 
 import { Body, Button, Card, Screen } from '@/components/kit';
 import { colors, space } from '@/components/theme';
+import { useAuth } from '@/lib/auth';
 
 export default function Welcome() {
+  // Once signed in (the account loads a moment after the password check), go to the right home screen.
+  const { profile } = useAuth();
+  if (profile) return <Redirect href="/" />;
+
   return (
     <Screen>
       <View style={{ alignItems: 'center', gap: space.sm, paddingTop: space.xl }}>

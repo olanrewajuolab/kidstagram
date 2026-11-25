@@ -20,4 +20,9 @@ export const supabase = createClient(url || 'http://localhost:54321', anonKey ||
 export const CHILD_EMAIL_DOMAIN = 'kids.kidstagram.invalid';
 export const childEmail = (username: string) => `${username.trim().toLowerCase()}@${CHILD_EMAIL_DOMAIN}`;
 
+/** A throwaway client used only to create a child's login, so the parent stays signed in. */
+export function signupClient() {
+  return createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'kidstagram-child-signup' } });
+}
+
 export const POLICY_VERSION = '2026-11-draft';

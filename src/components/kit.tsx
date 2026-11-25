@@ -77,7 +77,7 @@ export function Field({ label, hint, containerStyle, ...props }: TextInputProps 
   return (
     <View style={[{ gap: space.xs }, containerStyle]}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput placeholderTextColor="#9AA0B8" style={[styles.input, props.multiline && { minHeight: 96, textAlignVertical: 'top' }]} {...props} />
+      <TextInput accessibilityLabel={label} placeholderTextColor="#9AA0B8" style={[styles.input, props.multiline && { minHeight: 96, textAlignVertical: 'top' }]} {...props} />
       {hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
   );

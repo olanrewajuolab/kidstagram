@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { Body, Button, Card, Chip, ErrorText, Field, Heading, Row, Screen, Title } from '@/components/kit';
+import { ProjectMaker } from '@/components/project-maker';
 import { colors } from '@/components/theme';
 import {
   addComment,
@@ -14,6 +15,7 @@ import {
   listSteps,
   myFriendships,
   report,
+  saveContent,
   updateProject,
 } from '@/lib/api';
 import { ageBand, bandRules } from '@/lib/age';
@@ -111,7 +113,20 @@ export default function ProjectScreen() {
       </Row>
       <ErrorText message={error} />
 
-      <Heading>Steps</Heading>
+      <ProjectMaker
+        project={project}
+        canEdit={canEdit}
+        onSave={async (content) => {
+          try {
+            await saveContent(id, content);
+          } catch (e) {
+            throw new Error(friendlyError((e as Error).message));
+          }
+          setProject({ ...project, content });
+        }}
+      />
+
+      <Heading>📝 Plan and steps</Heading>
       {steps.length === 0 && <Body muted>No steps yet. What's the first thing to make?</Body>}
       {steps.map((s, i) => (
         <Card key={s.id}>

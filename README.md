@@ -7,8 +7,8 @@ One codebase runs on the web, iPhone and Android (Expo + React Native), with Sup
 
 | Rule | Where it's enforced |
 | --- | --- |
-| Parents create accounts; children can't sign up alone | `manage-child` edge function, `profiles` insert policy |
-| Parental consent recorded before any child account exists | `parental_consents` table, checked in `manage-child` |
+| Parents create accounts; children can't sign up alone | `claim_child()` links a brand-new child login to a consenting parent |
+| Parental consent recorded before any child account exists | `parental_consents` table, checked in `claim_child()` |
 | Only nickname, avatar and birth month are stored for children | `profiles` schema |
 | Private by default; only approved friends see shared projects | RLS on `projects`, `can_view_project()` |
 | No direct messages and no search; friends connect by a code shared offline | No DM tables; `request_friend()` |
@@ -16,7 +16,9 @@ One codebase runs on the web, iPhone and Android (Expo + React Native), with Sup
 | Ages 5 to 8 can only post preset comments | `enforce_comment_rules()` trigger, text forced from `comment_presets` |
 | Text filter for emails, phone numbers, links, social handles, addresses, personal questions, unkind words | `text_problem()` trigger (server) + `src/lib/moderation.ts` (client hints) |
 | Report button on projects, steps and comments; reported items get flagged | `reports` table + `flag_reported_content()` |
-| Parents can pause or delete a child account and all its data | Parent dashboard, `manage-child` delete |
+| Parents can pause or delete a child account and all its data | Parent dashboard, `delete_child()` |
+| Words inside games and shows (speech, win messages) are filtered too | `text_problem()` over `projects.content` |
+| Only the owner and invited helpers can change a game or show | `save_project_content()` |
 
 The database rules are tested in `supabase/tests/rls_test.sql`.
 
@@ -27,12 +29,18 @@ The database rules are tested in `supabase/tests/rls_test.sql`.
 - Replace the starter word filter with a proper moderation service, and add image moderation when media uploads land.
 - Set up a moderator account and a review routine for flagged content.
 
+## What kids can make
+
+- **Games:** pick a hero, a world, something to jump over and something to collect, how fast and how many to win. Press play and tap (or press space) to jump.
+- **Shows:** add scenes, pick a background, up to three characters per scene and what each one says. Press play and tap through it like a puppet show.
+- Friends invited as helpers can change the game or show too. Everyone else who can see it can play it.
+
 ## Getting started
 
 1. Install dependencies: `npm install`
 2. Create a free project at [supabase.com](https://supabase.com).
-3. Apply the database: in the Supabase SQL editor run `supabase/migrations/0001_init.sql`, or use the Supabase CLI with `supabase db push`.
-4. Deploy the child-account function: `supabase functions deploy manage-child`.
+3. Set up the database: open the SQL editor, paste all of `supabase/migrations/0001_init.sql`, and press Run.
+4. In Authentication → Sign In / Providers → Email, turn off **Confirm email** (children's logins have no real email address).
 5. Copy `.env.example` to `.env` and fill in your project URL and anon key (Project Settings → API).
 6. Run it:
    - Web: `npm run web`
@@ -48,7 +56,6 @@ src/app/                 Screens (Expo Router: every file is a route)
 src/lib/                 Supabase client, auth, API helpers, age bands, text filter, presets
 src/components/          UI kit and theme
 supabase/migrations/     Database schema and safety rules
-supabase/functions/      Edge functions (manage-child)
 supabase/tests/          Database safety tests
 ```
 

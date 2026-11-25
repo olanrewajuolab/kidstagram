@@ -1,13 +1,16 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
 import { Switch, View } from 'react-native';
 
 import { Body, Button, ErrorText, Field, Screen } from '@/components/kit';
 import { space } from '@/components/theme';
+import { useAuth } from '@/lib/auth';
 import { friendlyError } from '@/lib/moderation';
 import { supabase } from '@/lib/supabase';
 
 export default function ParentSignUp() {
+  // Once signed in (the account loads a moment after the password check), go to the right home screen.
+  const { profile } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,8 +29,9 @@ export default function ParentSignUp() {
     });
     if (err) return setError(friendlyError(err.message));
     if (!data.session) return setCheckEmail(true);
-    router.replace('/');
   };
+
+  if (profile) return <Redirect href="/" />;
 
   if (checkEmail) {
     return (

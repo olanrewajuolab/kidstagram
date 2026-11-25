@@ -1,12 +1,15 @@
-import { router } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import { Text } from 'react-native';
 
 import { Body, Button, ErrorText, Field, Screen } from '@/components/kit';
+import { useAuth } from '@/lib/auth';
 import { friendlyError } from '@/lib/moderation';
 import { childEmail, supabase } from '@/lib/supabase';
 
 export default function KidSignIn() {
+  // Once signed in (the account loads a moment after the password check), go to the right home screen.
+  const { profile } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -15,8 +18,9 @@ export default function KidSignIn() {
     setError(null);
     const { error: err } = await supabase.auth.signInWithPassword({ email: childEmail(username), password });
     if (err) return setError(friendlyError(err.message));
-    router.replace('/');
   };
+
+  if (profile) return <Redirect href="/" />;
 
   return (
     <Screen>

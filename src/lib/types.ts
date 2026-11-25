@@ -19,6 +19,7 @@ export type Project = {
   description: string;
   visibility: 'private' | 'friends';
   moderation: 'ok' | 'flagged' | 'removed';
+  content?: unknown;
   created_at: string;
   owner?: Pick<Profile, 'id' | 'nickname' | 'avatar'>;
 };

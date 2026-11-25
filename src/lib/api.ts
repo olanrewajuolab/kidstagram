@@ -1,4 +1,5 @@
-import { supabase } from './supabase';
+import { defaultContent, type ProjectContent } from './content';
+import { childEmail, signupClient, supabase } from './supabase';
 import type { Comment, Friendship, Profile, Project, Step } from './types';
 
 const ownerCols = 'owner:profiles!projects_owner_id_fkey(id, nickname, avatar)';
@@ -26,27 +27,40 @@ export async function getProfile(id: string): Promise<Profile> {
   return check(await supabase.from('profiles').select('*').eq('id', id).single());
 }
 
-async function callManageChild(body: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke('manage-child', { body });
-  if (error) {
-    // The function returns { error } with a non-2xx status; surface its message.
-    const ctx = (error as { context?: Response }).context;
-    const detail = ctx && typeof ctx.json === 'function' ? await ctx.json().catch(() => null) : null;
-    throw new Error(detail?.error ?? error.message);
-  }
-  return data;
-}
-
-export const createChild = (input: {
+/**
+ * Makes the child's login (username + password), then links it to this parent.
+ * The database checks consent, age and that the login is brand new (claim_child).
+ */
+export async function createChild(input: {
   nickname: string;
   avatar: string;
   username: string;
   password: string;
   birthYear: number;
   birthMonth: number;
-}) => callManageChild({ action: 'create', ...input });
+}) {
+  const username = input.username.trim().toLowerCase();
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) throw new Error('bad_username');
+  if (input.password.length < 8) throw new Error('weak_password');
+  const { data, error } = await signupClient().auth.signUp({ email: childEmail(username), password: input.password });
+  if (error) throw new Error(/registered|exists/i.test(error.message) ? 'username_taken' : error.message);
+  if (!data.user || data.user.identities?.length === 0) throw new Error('username_taken');
+  if (!data.session) throw new Error('confirm_email_on');
+  check(
+    await supabase.rpc('claim_child', {
+      p_child: data.user.id,
+      p_nickname: input.nickname,
+      p_avatar: input.avatar,
+      p_birth_year: input.birthYear,
+      p_birth_month: input.birthMonth,
+    }),
+  );
+  return { username };
+}
 
-export const deleteChild = (childId: string) => callManageChild({ action: 'delete', childId });
+export async function deleteChild(childId: string) {
+  check(await supabase.rpc('delete_child', { p_child: childId }));
+}
 
 export async function setChildPaused(childId: string, paused: boolean) {
   check(await supabase.from('profiles').update({ status: paused ? 'paused' : 'active' }).eq('id', childId));
@@ -116,12 +130,18 @@ export async function getProject(id: string): Promise<Project> {
 }
 
 export async function createProject(input: Pick<Project, 'owner_id' | 'kind' | 'title' | 'description' | 'visibility'>) {
-  const row: Project = check(await supabase.from('projects').insert(input).select('*').single());
+  const row: Project = check(
+    await supabase.from('projects').insert({ ...input, content: defaultContent(input.kind) }).select('*').single(),
+  );
   return row;
 }
 
 export async function updateProject(id: string, patch: Partial<Pick<Project, 'title' | 'description' | 'visibility'>>) {
   check(await supabase.from('projects').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id));
+}
+
+export async function saveContent(id: string, content: ProjectContent) {
+  check(await supabase.rpc('save_project_content', { p_project: id, p_content: content }));
 }
 
 export async function deleteProject(id: string) {

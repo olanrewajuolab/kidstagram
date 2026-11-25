@@ -97,6 +97,8 @@ create table public.projects (
   description text not null default '' check (char_length(description) <= 1000),
   visibility public.project_visibility not null default 'private',
   cover_path text,
+  -- What the kid built: game settings or show scenes. See src/lib/content.ts.
+  content jsonb not null default '{}'::jsonb check (pg_column_size(content) < 32000),
   moderation public.moderation_status not null default 'ok',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -236,7 +238,12 @@ declare
   problem text;
 begin
   if tg_table_name = 'projects' then
-    problem := coalesce(public.text_problem(new.title), public.text_problem(new.description));
+    problem := coalesce(
+      public.text_problem(new.title),
+      public.text_problem(new.description),
+      -- every piece of text inside the game or show (speech lines, win messages...)
+      public.text_problem((select string_agg(v #>> '{}', ' ') from jsonb_path_query(new.content, 'strict $.**') v where jsonb_typeof(v) = 'string'))
+    );
   else
     problem := public.text_problem(new.body);
   end if;
@@ -247,7 +254,7 @@ begin
 end
 $$;
 
-create trigger projects_text_safety before insert or update of title, description on public.projects
+create trigger projects_text_safety before insert or update of title, description, content on public.projects
   for each row execute function public.enforce_text_safety();
 create trigger steps_text_safety before insert or update of body on public.project_steps
   for each row execute function public.enforce_text_safety();
@@ -541,6 +548,77 @@ end
 $$;
 create trigger reports_flag after insert on public.reports
   for each row execute function public.flag_reported_content();
+
+-- Owner and helpers save what they built. Only the content changes; title and sharing stay with the owner.
+create or replace function public.save_project_content(p_project uuid, p_content jsonb)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.can_edit_project(p_project) then
+    raise exception 'not_allowed' using errcode = 'P0001';
+  end if;
+  update public.projects set content = p_content, updated_at = now() where id = p_project;
+end
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Child accounts. The parent's app signs the child up (username@kids.kidstagram.invalid),
+-- then calls claim_child to attach it to the parent. No server code to deploy.
+-- ---------------------------------------------------------------------------
+create or replace function public.claim_child(
+  p_child uuid, p_nickname text, p_avatar text, p_birth_year int, p_birth_month int
+) returns text language plpgsql security definer set search_path = public as $$
+declare
+  bm date;
+  code text;
+  alphabet text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  i int;
+begin
+  if public.my_role() is distinct from 'parent' then
+    raise exception 'parents_only' using errcode = 'P0001';
+  end if;
+  if not exists (select 1 from public.parental_consents where parent_id = auth.uid()) then
+    raise exception 'consent_required' using errcode = 'P0001';
+  end if;
+  if exists (select 1 from public.profiles where id = p_child) then
+    raise exception 'already_claimed' using errcode = 'P0001';
+  end if;
+  -- Only a brand-new child login made in the last 15 minutes can be claimed.
+  if not exists (
+    select 1 from auth.users
+    where id = p_child and email like '%@kids.kidstagram.invalid' and created_at > now() - interval '15 minutes'
+  ) then
+    raise exception 'child_login_not_found' using errcode = 'P0001';
+  end if;
+  bm := make_date(p_birth_year, p_birth_month, 1);
+  if public.age_years(bm) < 5 or public.age_years(bm) > 16 then
+    raise exception 'age_out_of_range' using errcode = 'P0001';
+  end if;
+  if public.text_problem(p_nickname) is not null then
+    raise exception 'text_blocked:%', public.text_problem(p_nickname) using errcode = 'P0001';
+  end if;
+  loop
+    code := '';
+    for i in 1..6 loop
+      code := code || substr(alphabet, 1 + floor(random() * length(alphabet))::int, 1);
+    end loop;
+    exit when not exists (select 1 from public.profiles where friend_code = code);
+  end loop;
+  insert into public.profiles (id, role, nickname, avatar, parent_id, birth_month, friend_code)
+    values (p_child, 'child', trim(p_nickname), p_avatar, auth.uid(), bm, code);
+  return code;
+end
+$$;
+
+-- Deleting the login removes the profile, projects, comments and friendships (cascade).
+create or replace function public.delete_child(p_child uuid)
+returns void language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not public.is_parent_of(p_child) then
+    raise exception 'not_your_child' using errcode = 'P0001';
+  end if;
+  delete from auth.users where id = p_child;
+end
+$$;
 
 -- ---------------------------------------------------------------------------
 -- Storage: private bucket, files live under <owner_id>/...

@@ -1,11 +1,14 @@
 import { router } from 'expo-router';
+import { Text } from 'react-native';
 import { useState } from 'react';
 
-import { Body, Button, Chip, ErrorText, Field, Heading, Row, Screen } from '@/components/kit';
+import { Body, Button, Card, Chip, ErrorText, Field, Heading, Row, Screen, Title } from '@/components/kit';
+import { colors } from '@/components/theme';
 import { ageYears } from '@/lib/age';
 import { createChild } from '@/lib/api';
 import { findTextProblem, friendlyError, problemMessages } from '@/lib/moderation';
 import { avatars } from '@/lib/presets';
+import { childEmail, supabase } from '@/lib/supabase';
 
 export default function AddChild() {
   const [nickname, setNickname] = useState('');
@@ -15,6 +18,7 @@ export default function AddChild() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
 
   const submit = async () => {
     setError(null);
@@ -26,12 +30,38 @@ export default function AddChild() {
     const problem = findTextProblem(nickname);
     if (problem) return setError(problemMessages[problem]);
     try {
-      await createChild({ nickname: nickname.trim(), avatar, username, password, birthYear: y, birthMonth: m });
-      router.back();
+      const res = await createChild({ nickname: nickname.trim(), avatar, username, password, birthYear: y, birthMonth: m });
+      setDone(res.username);
     } catch (e) {
       setError(friendlyError((e as Error).message));
     }
   };
+
+  const switchToChild = async () => {
+    await supabase.auth.signOut();
+    const { error: err } = await supabase.auth.signInWithPassword({ email: childEmail(done!), password });
+    if (err) return setError(friendlyError(err.message));
+    router.replace('/');
+  };
+
+  if (done) {
+    return (
+      <Screen>
+        <Text style={{ fontSize: 64, textAlign: 'center' }}>{avatars[avatar]}</Text>
+        <Title>{nickname.trim()} is ready!</Title>
+        <Card>
+          <Body>They sign in on the "I'm a kid" screen with:</Body>
+          <Body>
+            Username: <Text style={{ fontWeight: '800', color: colors.primary }}>{done}</Text>
+          </Body>
+          <Body>Password: the one you just chose.</Body>
+        </Card>
+        <ErrorText message={error} />
+        <Button label={`Go to ${nickname.trim()}'s Kidstagram now`} onPress={switchToChild} />
+        <Button label="Back to the parent dashboard" variant="secondary" onPress={() => router.back()} />
+      </Screen>
+    );
+  }
 
   return (
     <Screen>

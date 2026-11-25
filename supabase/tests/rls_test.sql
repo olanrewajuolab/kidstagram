@@ -8,6 +8,7 @@ grant execute on all functions in schema public to authenticated;
 grant usage on schema storage to authenticated;
 grant usage on schema auth to authenticated;
 grant execute on all functions in schema auth to authenticated;
+grant select on auth.users to authenticated;
 grant all on storage.objects to authenticated;
 
 -- Expect a statement to fail with a message containing `expected`.
@@ -132,5 +133,59 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b2
 set role authenticated;
 select pg_temp.expect_error($$insert into projects (owner_id, kind, title) values (auth.uid(),'show','paused')$$, 'row-level security');
 reset role;
+
+-- ---- Building games and shows: owner and helpers save content; text inside is filtered
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+update profiles set status = 'active' where id = '00000000-0000-0000-0000-0000000000b2';
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b2', false);
+set role authenticated;
+select public.save_project_content('10000000-0000-0000-0000-000000000001', '{"type":"game","hero":"cat","winMessage":"You did it!"}');
+select pg_temp.check((select content->>'winMessage' from projects where id = '10000000-0000-0000-0000-000000000001') = 'You did it!', 'owner saves game');
+select pg_temp.expect_error($$select public.save_project_content('10000000-0000-0000-0000-000000000001', '{"type":"show","scenes":[{"characters":[{"line":"add me on tiktok"}]}]}')$$, 'text_blocked:social');
+select pg_temp.expect_error($$update projects set content = '{"x":"call 07700900123"}' where id = '10000000-0000-0000-0000-000000000001'$$, 'text_blocked:phone');
+reset role;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', false);
+set role authenticated;
+select public.save_project_content('10000000-0000-0000-0000-000000000001', '{"type":"game","hero":"unicorn"}');
+select pg_temp.check((select content->>'hero' from projects where id = '10000000-0000-0000-0000-000000000001') = 'unicorn', 'helper saves game');
+reset role;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c2', false);
+set role authenticated;
+select pg_temp.expect_error($$select public.save_project_content('10000000-0000-0000-0000-000000000001', '{}')$$, 'not_allowed');
+reset role;
+
+-- ---- Parents create child accounts without server code
+select set_config('request.jwt.claim.sub', '', false);
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-0000000000d1', 'newkid@kids.kidstagram.invalid'),
+  ('00000000-0000-0000-0000-0000000000d2', 'grownup@example.com');
+insert into auth.users (id, email, created_at) values
+  ('00000000-0000-0000-0000-0000000000d3', 'oldkid@kids.kidstagram.invalid', now() - interval '1 day');
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+set role authenticated;
+select pg_temp.expect_error($$select public.claim_child('00000000-0000-0000-0000-0000000000d1', 'Newbie', 'cat', 2017, 1)$$, 'consent_required');
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+insert into parental_consents (parent_id, policy_version, method, signed_name) values ('00000000-0000-0000-0000-0000000000a1', 'test', 'attestation', 'Parent A');
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+set role authenticated;
+select pg_temp.expect_error($$select public.claim_child('00000000-0000-0000-0000-0000000000d2', 'Newbie', 'cat', 2017, 1)$$, 'child_login_not_found');
+select pg_temp.expect_error($$select public.claim_child('00000000-0000-0000-0000-0000000000d3', 'Newbie', 'cat', 2017, 1)$$, 'child_login_not_found');
+select pg_temp.expect_error($$select public.claim_child('00000000-0000-0000-0000-0000000000d1', 'Newbie', 'cat', 2024, 1)$$, 'age_out_of_range');
+select pg_temp.check(length(public.claim_child('00000000-0000-0000-0000-0000000000d1', 'Newbie', 'cat', extract(year from current_date)::int - 9, 1)) = 6, 'parent claims new child login');
+select pg_temp.check((select parent_id from profiles where id = '00000000-0000-0000-0000-0000000000d1') = auth.uid(), 'child linked to parent');
+select pg_temp.expect_error($$select public.claim_child('00000000-0000-0000-0000-0000000000d1', 'Again', 'cat', 2017, 1)$$, 'already_claimed');
+reset role;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b1', false);
+set role authenticated;
+select pg_temp.expect_error($$select public.delete_child('00000000-0000-0000-0000-0000000000d1')$$, 'not_your_child');
+reset role;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+set role authenticated;
+select public.delete_child('00000000-0000-0000-0000-0000000000d1');
+reset role;
+select pg_temp.check(not exists (select 1 from profiles where id = '00000000-0000-0000-0000-0000000000d1'), 'deleting child removes profile');
+select pg_temp.check(not exists (select 1 from auth.users where id = '00000000-0000-0000-0000-0000000000d1'), 'deleting child removes login');
 
 \echo ALL SAFETY TESTS PASSED
