@@ -54,6 +54,7 @@ export default function ParentSignUp() {
       </View>
       <ErrorText message={error} />
       <Button label="Create account" onPress={submit} />
+      <Button label="Read our privacy policy" variant="ghost" onPress={() => router.push('/privacy')} />
     </Screen>
   );
 }

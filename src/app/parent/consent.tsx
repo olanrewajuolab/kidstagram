@@ -44,6 +44,7 @@ export default function Consent() {
         <Body>• Anyone can report anything. You can pause or delete your child's account at any time, and that deletes their data.</Body>
         <Body>• We never show ads or sell data.</Body>
       </Card>
+      <Button label="Read the full privacy policy" variant="ghost" onPress={() => router.push('/privacy')} />
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
         <Switch value={agreed} onValueChange={setAgreed} accessibilityLabel="I agree" />
         <Body style={{ flex: 1 }}>I am the parent or legal guardian and I consent to Kidstagram collecting the information above for my child.</Body>
