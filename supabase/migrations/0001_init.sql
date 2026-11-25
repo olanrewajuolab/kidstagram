@@ -643,3 +643,12 @@ create policy media_delete on storage.objects for delete using (
     or public.is_parent_of(((storage.foldername(name))[1])::uuid)
   )
 );
+
+-- ---------------------------------------------------------------------------
+-- Let the app reach the tables. Newer Supabase projects don't grant this by default.
+-- Row level security above still decides what each person can see and change.
+-- ---------------------------------------------------------------------------
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant select on public.comment_presets to anon;
+grant execute on all functions in schema public to authenticated;
