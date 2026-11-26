@@ -45,6 +45,7 @@ export function friendlyError(message: string | undefined): string {
     confirm_email_on: 'Almost there: in Supabase, go to Authentication, then Sign In / Providers, and turn off "Confirm email". Then try again.',
     already_claimed: 'That account is already set up.',
     not_allowed: "You can't change this one.",
+    profiles_avatar_preset: 'Pick one of the avatars on the list.',
     consent_required: 'Please give parental consent first.',
     username_taken: 'That username is taken. Try another one.',
     bad_username: 'Usernames use 3 to 20 letters, numbers or _.',

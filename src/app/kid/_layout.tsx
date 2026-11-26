@@ -13,6 +13,7 @@ export default function KidLayout() {
       <Stack.Screen name="index" options={{ title: 'Kidstagram' }} />
       <Stack.Screen name="new-project" options={{ title: 'New project' }} />
       <Stack.Screen name="friends" options={{ title: 'Friends' }} />
+      <Stack.Screen name="avatar" options={{ title: 'My avatar' }} />
       <Stack.Screen name="project/[id]" options={{ title: 'Project' }} />
     </Stack>
   );

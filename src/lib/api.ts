@@ -189,3 +189,9 @@ export async function addComment(projectId: string, authorId: string, body: stri
 export async function report(reporterId: string, targetType: 'project' | 'step' | 'comment' | 'profile', targetId: string, reason: string) {
   check(await supabase.from('reports').insert({ reporter_id: reporterId, target_type: targetType, target_id: targetId, reason }));
 }
+
+// ---------- Me ----------
+/** Kids (and parents) can pick a new cartoon avatar. The database only accepts the preset ones. */
+export async function setMyAvatar(myId: string, avatar: string) {
+  check(await supabase.from('profiles').update({ avatar }).eq('id', myId));
+}

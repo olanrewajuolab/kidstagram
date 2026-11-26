@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Body, Button, Card, ErrorText, Heading, Row, Screen, Title } from '@/components/kit';
 import { colors } from '@/components/theme';
@@ -48,7 +48,14 @@ export default function KidHome() {
   return (
     <Screen>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Text style={{ fontSize: 44 }}>{avatars[profile?.avatar ?? 'star']}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Change my avatar"
+          onPress={() => router.push('/kid/avatar')}
+          style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 44 }}>{avatars[profile?.avatar ?? 'star'] ?? '⭐'}</Text>
+          <Text style={{ fontSize: 12, fontWeight: '800', color: colors.primary }}>✏️ Change</Text>
+        </Pressable>
         <Title>Hi {profile?.nickname}!</Title>
       </View>
       <Row>
