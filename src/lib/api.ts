@@ -1,4 +1,4 @@
-import { defaultContent, type ProjectContent } from './content';
+import { defaultContent, type GameMode, type ProjectContent } from './content';
 import { childEmail, signupClient, supabase } from './supabase';
 import type { Comment, Friendship, Profile, Project, Step } from './types';
 
@@ -129,9 +129,12 @@ export async function getProject(id: string): Promise<Project> {
   return check(await supabase.from('projects').select(`*, ${ownerCols}`).eq('id', id).single());
 }
 
-export async function createProject(input: Pick<Project, 'owner_id' | 'kind' | 'title' | 'description' | 'visibility'>) {
+export async function createProject(
+  input: Pick<Project, 'owner_id' | 'kind' | 'title' | 'description' | 'visibility'>,
+  mode: GameMode = 'runner',
+) {
   const row: Project = check(
-    await supabase.from('projects').insert({ ...input, content: defaultContent(input.kind) }).select('*').single(),
+    await supabase.from('projects').insert({ ...input, content: defaultContent(input.kind, mode) }).select('*').single(),
   );
   return row;
 }

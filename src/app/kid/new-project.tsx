@@ -3,12 +3,14 @@ import { useState } from 'react';
 
 import { Body, Button, Chip, ErrorText, Field, Heading, Row, Screen } from '@/components/kit';
 import { createProject } from '@/lib/api';
+import { gameModes, type GameMode } from '@/lib/content';
 import { useAuth } from '@/lib/auth';
 import { findTextProblem, friendlyError, problemMessages } from '@/lib/moderation';
 
 export default function NewProject() {
   const { profile } = useAuth();
   const [kind, setKind] = useState<'game' | 'show'>('game');
+  const [mode, setMode] = useState<GameMode>('runner');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<'private' | 'friends'>('private');
@@ -20,7 +22,7 @@ export default function NewProject() {
     const problem = findTextProblem(`${title} ${description}`);
     if (problem) return setError(problemMessages[problem]);
     try {
-      const p = await createProject({ owner_id: profile!.id, kind, title: title.trim(), description: description.trim(), visibility });
+      const p = await createProject({ owner_id: profile!.id, kind, title: title.trim(), description: description.trim(), visibility }, mode);
       router.replace(`/kid/project/${p.id}`);
     } catch (e) {
       setError(friendlyError((e as Error).message));
@@ -34,6 +36,17 @@ export default function NewProject() {
         <Chip label="🎮 A game" selected={kind === 'game'} onPress={() => setKind('game')} />
         <Chip label="🎬 A show" selected={kind === 'show'} onPress={() => setKind('show')} />
       </Row>
+      {kind === 'game' && (
+        <>
+          <Heading>Which kind of game?</Heading>
+          <Row>
+            {(Object.keys(gameModes) as GameMode[]).map((m) => (
+              <Chip key={m} label={gameModes[m].label} selected={mode === m} onPress={() => setMode(m)} />
+            ))}
+          </Row>
+          <Body muted>{gameModes[mode].blurb}</Body>
+        </>
+      )}
       <Field label="Name" value={title} onChangeText={setTitle} maxLength={60} placeholder={kind === 'game' ? 'Space Jumper' : 'The Dragon Who Sneezed'} />
       <Field label="What's it about?" value={description} onChangeText={setDescription} multiline maxLength={1000} />
       <Heading>Who can see it?</Heading>

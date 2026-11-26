@@ -5,6 +5,7 @@ import {
   characters,
   collectibles,
   contentText,
+  gameModes,
   gameThemes,
   heroes,
   newScene,
@@ -13,6 +14,7 @@ import {
   readContent,
   showBackgrounds,
   type GameContent,
+  type GameMode,
   type GameTheme,
   type ProjectContent,
   type ShowBackground,
@@ -109,7 +111,16 @@ function GameEditor({ game, onChange }: { game: GameContent; onChange: (g: GameC
   const set = <K extends keyof GameContent>(k: K, v: GameContent[K]) => onChange({ ...game, [k]: v });
   return (
     <Card>
-      <Picker label="Your hero" options={heroes} value={game.hero} onPick={(v) => set('hero', v)} />
+      <View style={{ gap: space.sm }}>
+        <Text style={styles.label}>What kind of game?</Text>
+        <Row>
+          {(Object.keys(gameModes) as GameMode[]).map((m) => (
+            <Chip key={m} label={gameModes[m].label} selected={game.mode === m} onPress={() => onChange({ ...game, mode: m, obstacle: m === 'football' && !characters.includes(game.obstacle) ? '🐻' : m !== 'football' && !obstacles.includes(game.obstacle) ? '🪨' : game.obstacle })} />
+          ))}
+        </Row>
+        <Body muted>{gameModes[game.mode].blurb}</Body>
+      </View>
+      <Picker label={game.mode === 'runner' ? 'Your hero' : game.mode === 'catch' ? 'Your catcher' : 'Your player'} options={heroes} value={game.hero} onPick={(v) => set('hero', v)} />
       <View style={{ gap: space.sm }}>
         <Text style={styles.label}>Where is it?</Text>
         <Row>
@@ -118,8 +129,12 @@ function GameEditor({ game, onChange }: { game: GameContent; onChange: (g: GameC
           ))}
         </Row>
       </View>
-      <Picker label="Jump over" options={obstacles} value={game.obstacle} onPick={(v) => set('obstacle', v)} />
-      <Picker label="Collect" options={collectibles} value={game.collectible} onPick={(v) => set('collectible', v)} />
+      {game.mode === 'runner' && <Picker label="Jump over" options={obstacles} value={game.obstacle} onPick={(v) => set('obstacle', v)} />}
+      {game.mode === 'football' && <Picker label="Goalkeeper" options={characters} value={game.obstacle} onPick={(v) => set('obstacle', v)} />}
+      {game.mode === 'catch' && <Picker label="Dodge" options={obstacles} value={game.obstacle} onPick={(v) => set('obstacle', v)} />}
+      {(game.mode === 'runner' || game.mode === 'catch') && (
+        <Picker label={game.mode === 'catch' ? 'Catch' : 'Collect'} options={collectibles} value={game.collectible} onPick={(v) => set('collectible', v)} />
+      )}
       <View style={{ gap: space.sm }}>
         <Text style={styles.label}>How fast?</Text>
         <Row>
@@ -129,10 +144,15 @@ function GameEditor({ game, onChange }: { game: GameContent; onChange: (g: GameC
         </Row>
       </View>
       <View style={{ gap: space.sm }}>
-        <Text style={styles.label}>How many to win?</Text>
+        <Text style={styles.label}>{game.mode === 'football' ? 'How many goals to win?' : game.mode === 'basketball' ? 'How many baskets to win?' : 'How many to win?'}</Text>
         <Row>
           {[5, 10, 20, 30].map((n) => (
-            <Chip key={n} label={`${n} ${game.collectible}`} selected={game.goal === n} onPress={() => set('goal', n)} />
+            <Chip
+              key={n}
+              label={`${n} ${game.mode === 'football' ? '⚽' : game.mode === 'basketball' ? '🏀' : game.collectible}`}
+              selected={game.goal === n}
+              onPress={() => set('goal', n)}
+            />
           ))}
         </Row>
       </View>

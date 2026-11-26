@@ -21,3 +21,14 @@ test('contentText collects every speech line', () => {
   const text = contentText({ type: 'show', scenes: [{ id: '1', background: 'meadow', characters: [{ emoji: '🐱', line: 'Hi' }, { emoji: '🐶', line: 'Bye' }] }] });
   assert.equal(text, 'Hi Bye');
 });
+
+test('older games become runners; each game type has its own starting setup', () => {
+  const old = readContent('game', { type: 'game', hero: '🐸' });
+  assert.equal(old.type === 'game' && old.mode, 'runner');
+  const bad = readContent('game', { type: 'game', mode: 'hacked' });
+  assert.equal(bad.type === 'game' && bad.mode, 'runner');
+  for (const mode of ['runner', 'football', 'basketball', 'catch'] as const) {
+    const g = defaultContent('game', mode);
+    assert.equal(g.type === 'game' && g.mode, mode);
+  }
+});

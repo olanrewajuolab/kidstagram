@@ -2,8 +2,12 @@
 
 export type GameTheme = 'space' | 'jungle' | 'ocean' | 'city' | 'candy';
 
+export type GameMode = 'runner' | 'football' | 'basketball' | 'catch';
+
 export type GameContent = {
   type: 'game';
+  /** Which kind of game. Older games have no mode and are runners. */
+  mode: GameMode;
   hero: string;
   theme: GameTheme;
   obstacle: string;
@@ -25,6 +29,14 @@ export const heroes = ['🐱', '🐶', '🦊', '🐸', '🐵', '🦄', '🐉', '
 export const obstacles = ['🪨', '🌵', '🔥', '🧱', '👾', '🦀', '💣', '🌪️'];
 export const collectibles = ['⭐', '💎', '🍎', '🍩', '🪙', '❤️', '🍭', '🎈'];
 export const characters = ['🐱', '🐶', '🦊', '🐻', '🐰', '🦁', '🐸', '🦄', '🐉', '🧙', '👸', '🤴', '🧚', '🤖', '👻', '🦖'];
+
+export const gameModes: Record<GameMode, { label: string; blurb: string }> = {
+  runner: { label: '🏃 Runner', blurb: 'Run, jump over things and collect treasure.' },
+  football: { label: '⚽ Football', blurb: 'Take penalties and score past the goalkeeper.' },
+  basketball: { label: '🏀 Basketball', blurb: 'Shoot the ball into the moving hoop.' },
+  catch: { label: '🧺 Catch', blurb: 'Catch the good things falling from the sky. Dodge the rest!' },
+};
+export const isGameMode = (m: unknown): m is GameMode => typeof m === 'string' && m in gameModes;
 
 export const gameThemes: Record<GameTheme, { label: string; sky: string; ground: string; decor: string }> = {
   space: { label: '🌌 Space', sky: '#1B1F4B', ground: '#5B4B8A', decor: '✨' },
@@ -51,9 +63,13 @@ export function newScene(): ShowScene {
   return { id: id(), background: 'meadow', characters: [{ emoji: '🐱', line: 'Hello!' }] };
 }
 
-export function defaultContent(kind: 'game' | 'show'): ProjectContent {
+export function defaultContent(kind: 'game' | 'show', mode: GameMode = 'runner'): ProjectContent {
   if (kind === 'game') {
-    return { type: 'game', hero: '🐱', theme: 'space', obstacle: '🪨', collectible: '⭐', speed: 2, goal: 10, winMessage: 'You win!' };
+    const base: GameContent = { type: 'game', mode: 'runner', hero: '🐱', theme: 'space', obstacle: '🪨', collectible: '⭐', speed: 2, goal: 10, winMessage: 'You win!' };
+    if (mode === 'football') return { ...base, mode, hero: '🦁', theme: 'jungle', obstacle: '🐻', goal: 5, winMessage: 'Champions!' };
+    if (mode === 'basketball') return { ...base, mode, hero: '🐵', theme: 'city', goal: 5, winMessage: 'Slam dunk!' };
+    if (mode === 'catch') return { ...base, mode, hero: '🐰', theme: 'candy', obstacle: '💣', collectible: '🍩', winMessage: 'Yum, all caught!' };
+    return base;
   }
   return { type: 'show', scenes: [newScene()] };
 }
@@ -66,7 +82,9 @@ export function readContent(kind: 'game' | 'show', raw: unknown): ProjectContent
     const scenes = (raw as ShowContent).scenes;
     return { type: 'show', scenes: Array.isArray(scenes) && scenes.length ? scenes : (base as ShowContent).scenes };
   }
-  return { ...(base as GameContent), ...(raw as GameContent) };
+  const game = { ...(base as GameContent), ...(raw as GameContent) };
+  if (!isGameMode(game.mode)) game.mode = 'runner';
+  return game;
 }
 
 /** All the words inside the content, for the safety check before saving. */
