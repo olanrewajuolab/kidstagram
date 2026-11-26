@@ -189,4 +189,18 @@ reset role;
 select pg_temp.check(not exists (select 1 from profiles where id = '00000000-0000-0000-0000-0000000000d1'), 'deleting child removes profile');
 select pg_temp.check(not exists (select 1 from auth.users where id = '00000000-0000-0000-0000-0000000000d1'), 'deleting child removes login');
 
+-- ---- Kids change their own avatar, only to a preset; nobody else can change it
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b2', false);
+set role authenticated;
+update profiles set avatar = 'lion' where id = '00000000-0000-0000-0000-0000000000b2';
+select pg_temp.check((select avatar from profiles where id = '00000000-0000-0000-0000-0000000000b2') = 'lion', 'kid changes own avatar');
+select pg_temp.expect_error($$update profiles set avatar = 'http://example.com/me.jpg' where id = '00000000-0000-0000-0000-0000000000b2'$$, 'profiles_avatar_preset');
+reset role;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c2', false);
+set role authenticated;
+update profiles set avatar = 'ghost' where id = '00000000-0000-0000-0000-0000000000b2';
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+select pg_temp.check((select avatar from profiles where id = '00000000-0000-0000-0000-0000000000b2') = 'lion', 'stranger cannot change a kid avatar');
+
 \echo ALL SAFETY TESTS PASSED

@@ -13,4 +13,8 @@ export const commentPresets = [
 export const avatars: Record<string, string> = {
   star: '⭐', rocket: '🚀', cat: '🐱', dog: '🐶', dragon: '🐉', robot: '🤖',
   unicorn: '🦄', panda: '🐼', alien: '👽', dino: '🦖', fox: '🦊', owl: '🦉',
+  lion: '🦁', frog: '🐸', penguin: '🐧', bunny: '🐰', turtle: '🐢', octopus: '🐙',
+  monkey: '🐵', butterfly: '🦋', shark: '🦈', bear: '🐻', ghost: '👻', rainbow: '🌈',
 };
+// Keep in sync with profiles_avatar_preset in supabase/migrations.
+export const avatarKeys = Object.keys(avatars);
