@@ -30,6 +30,7 @@ export default function Welcome() {
         <Button label="Create a parent account" onPress={() => router.push('/parent-sign-up')} />
         <Button label="Parent sign in" variant="secondary" onPress={() => router.push('/parent-sign-in')} />
       </Card>
+      <Button label="Privacy: how we keep your information safe" variant="ghost" onPress={() => router.push('/privacy')} />
     </Screen>
   );
 }

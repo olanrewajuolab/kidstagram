@@ -15,6 +15,7 @@ export default function RootLayout() {
         <Stack.Screen name="parent-sign-up" options={{ title: 'Grown-up sign up' }} />
         <Stack.Screen name="parent-sign-in" options={{ title: 'Grown-up sign in' }} />
         <Stack.Screen name="kid-sign-in" options={{ title: 'Kid sign in' }} />
+        <Stack.Screen name="privacy" options={{ title: 'Privacy' }} />
         <Stack.Screen name="parent" options={{ headerShown: false }} />
         <Stack.Screen name="kid" options={{ headerShown: false }} />
       </Stack>
