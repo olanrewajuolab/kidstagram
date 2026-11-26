@@ -3,24 +3,22 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import {
   characters,
-  collectibles,
   contentText,
-  gameThemes,
-  heroes,
   newScene,
-  obstacles,
   quickLines,
   readContent,
   showBackgrounds,
-  type GameContent,
-  type GameTheme,
   type ProjectContent,
   type ShowBackground,
   type ShowContent,
   type ShowScene,
 } from '@/lib/content';
+import { ageBand } from '@/lib/age';
+import { useAuth } from '@/lib/auth';
+import { advance, missionStatus } from '@/lib/builder';
 import { findTextProblem, problemMessages } from '@/lib/moderation';
 import type { Project } from '@/lib/types';
+import { GameSettings, LevelEditor, MissionCard, RuleEditor } from './game-builder';
 import { GamePlayer } from './game-player';
 import { Body, Button, Card, Chip, ErrorText, Heading, Row } from './kit';
 import { ShowPlayer } from './show-player';
@@ -44,18 +42,39 @@ export function ProjectMaker({ project, canEdit, onSave }: Props) {
     setDirty(false);
   }, [project.id, project.kind, project.content]);
 
-  const change = (next: ProjectContent) => {
+  const { profile } = useAuth();
+  const band = profile?.birth_month ? ageBand(profile.birth_month) : 'middle';
+  const game = content.type === 'game' ? content : null;
+  const status = game ? missionStatus(band, game) : null;
+
+  // Every change ticks off any mission it completes. Finishing a mission saves straight away.
+  const apply = (next: ProjectContent) => {
+    let finished = false;
+    if (next.type === 'game') {
+      const progress = advance(band, next);
+      finished = progress.done.length > next.progress.done.length;
+      next = { ...next, progress };
+    }
     setContent(next);
     setDirty(true);
     setSaved(false);
+    if (finished) void save(next);
   };
 
-  const save = async () => {
+  // Building something new means it needs testing again.
+  const change = (next: ProjectContent) =>
+    apply(next.type === 'game' ? { ...next, progress: { ...next.progress, won: false } } : next);
+
+  const onWin = () => {
+    if (game && canEdit) apply({ ...game, progress: { ...game.progress, won: true } });
+  };
+
+  const save = async (c: ProjectContent = content) => {
     setError(null);
-    const problem = findTextProblem(contentText(content));
+    const problem = findTextProblem(contentText(c));
     if (problem) return setError(problemMessages[problem]);
     try {
-      await onSave(content);
+      await onSave(c);
       setDirty(false);
       setSaved(true);
     } catch (e) {
@@ -65,88 +84,31 @@ export function ProjectMaker({ project, canEdit, onSave }: Props) {
 
   return (
     <View style={{ gap: space.md }}>
+      {canEdit && game && status && <MissionCard status={status} state={game} />}
       <Heading>{content.type === 'game' ? '🎮 Play the game' : '🎬 Watch the show'}</Heading>
-      {content.type === 'game' ? <GamePlayer game={content} /> : <ShowPlayer show={content} />}
+      {content.type === 'game' ? <GamePlayer game={content} onWin={canEdit ? onWin : undefined} /> : <ShowPlayer show={content} />}
 
       {canEdit && (
         <>
           <Heading>🛠️ Build it</Heading>
-          {content.type === 'game' ? (
-            <GameEditor game={content} onChange={change} />
-          ) : (
+          {game && status ? (
+            <>
+              <Card>
+                <LevelEditor game={game} status={status} onChange={change} />
+              </Card>
+              <RuleEditor game={game} status={status} onChange={change} />
+              <Card>
+                <GameSettings game={game} status={status} onChange={change} />
+              </Card>
+            </>
+          ) : content.type === 'show' ? (
             <ShowEditor show={content} onChange={change} />
-          )}
+          ) : null}
           <ErrorText message={error} />
-          <Button label={dirty ? '💾 Save my changes' : saved ? '✅ Saved!' : '💾 Saved'} onPress={save} disabled={!dirty} />
+          <Button label={dirty ? '💾 Save my changes' : saved ? '✅ Saved!' : '💾 Saved'} onPress={() => save()} disabled={!dirty} />
         </>
       )}
     </View>
-  );
-}
-
-function Picker({ label, options, value, onPick }: { label: string; options: string[]; value: string; onPick: (v: string) => void }) {
-  return (
-    <View style={{ gap: space.sm }}>
-      <Text style={styles.label}>{label}</Text>
-      <Row>
-        {options.map((o) => (
-          <Pressable
-            key={o}
-            accessibilityRole="button"
-            accessibilityLabel={`${label} ${o}`}
-            accessibilityState={{ selected: o === value }}
-            onPress={() => onPick(o)}
-            style={[styles.emoji, o === value && styles.emojiOn]}>
-            <Text style={{ fontSize: 26 }}>{o}</Text>
-          </Pressable>
-        ))}
-      </Row>
-    </View>
-  );
-}
-
-function GameEditor({ game, onChange }: { game: GameContent; onChange: (g: GameContent) => void }) {
-  const set = <K extends keyof GameContent>(k: K, v: GameContent[K]) => onChange({ ...game, [k]: v });
-  return (
-    <Card>
-      <Picker label="Your hero" options={heroes} value={game.hero} onPick={(v) => set('hero', v)} />
-      <View style={{ gap: space.sm }}>
-        <Text style={styles.label}>Where is it?</Text>
-        <Row>
-          {(Object.keys(gameThemes) as GameTheme[]).map((t) => (
-            <Chip key={t} label={gameThemes[t].label} selected={game.theme === t} onPress={() => set('theme', t)} />
-          ))}
-        </Row>
-      </View>
-      <Picker label="Jump over" options={obstacles} value={game.obstacle} onPick={(v) => set('obstacle', v)} />
-      <Picker label="Collect" options={collectibles} value={game.collectible} onPick={(v) => set('collectible', v)} />
-      <View style={{ gap: space.sm }}>
-        <Text style={styles.label}>How fast?</Text>
-        <Row>
-          <Chip label="🐢 Slow" selected={game.speed === 1} onPress={() => set('speed', 1)} />
-          <Chip label="🐇 Medium" selected={game.speed === 2} onPress={() => set('speed', 2)} />
-          <Chip label="⚡ Fast" selected={game.speed === 3} onPress={() => set('speed', 3)} />
-        </Row>
-      </View>
-      <View style={{ gap: space.sm }}>
-        <Text style={styles.label}>How many to win?</Text>
-        <Row>
-          {[5, 10, 20, 30].map((n) => (
-            <Chip key={n} label={`${n} ${game.collectible}`} selected={game.goal === n} onPress={() => set('goal', n)} />
-          ))}
-        </Row>
-      </View>
-      <View style={{ gap: space.sm }}>
-        <Text style={styles.label}>What it says when you win</Text>
-        <TextInput
-          value={game.winMessage}
-          onChangeText={(v) => set('winMessage', v)}
-          maxLength={40}
-          style={styles.input}
-          accessibilityLabel="Winning message"
-        />
-      </View>
-    </Card>
   );
 }
 

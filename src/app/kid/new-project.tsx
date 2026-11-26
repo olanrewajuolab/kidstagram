@@ -20,7 +20,7 @@ export default function NewProject() {
     const problem = findTextProblem(`${title} ${description}`);
     if (problem) return setError(problemMessages[problem]);
     try {
-      const p = await createProject({ owner_id: profile!.id, kind, title: title.trim(), description: description.trim(), visibility });
+      const p = await createProject({ owner_id: profile!.id, kind, title: title.trim(), description: description.trim(), visibility: kind === 'game' ? 'private' : visibility });
       router.replace(`/kid/project/${p.id}`);
     } catch (e) {
       setError(friendlyError((e as Error).message));
@@ -37,10 +37,14 @@ export default function NewProject() {
       <Field label="Name" value={title} onChangeText={setTitle} maxLength={60} placeholder={kind === 'game' ? 'Space Jumper' : 'The Dragon Who Sneezed'} />
       <Field label="What's it about?" value={description} onChangeText={setDescription} multiline maxLength={1000} />
       <Heading>Who can see it?</Heading>
-      <Row>
-        <Chip label="🔒 Just me" selected={visibility === 'private'} onPress={() => setVisibility('private')} />
-        <Chip label="👫 My friends" selected={visibility === 'friends'} onPress={() => setVisibility('friends')} />
-      </Row>
+      {kind === 'game' ? (
+        <Body muted>🔒 Just you for now. Finish your game missions, then you can share it with friends.</Body>
+      ) : (
+        <Row>
+          <Chip label="🔒 Just me" selected={visibility === 'private'} onPress={() => setVisibility('private')} />
+          <Chip label="👫 My friends" selected={visibility === 'friends'} onPress={() => setVisibility('friends')} />
+        </Row>
+      )}
       <Body muted>Remember: no real names, addresses, schools or phone numbers.</Body>
       <ErrorText message={error} />
       <Button label="Create project" onPress={submit} />

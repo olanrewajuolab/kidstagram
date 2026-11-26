@@ -31,7 +31,7 @@ The database rules are tested in `supabase/tests/rls_test.sql`.
 
 ## What kids can make
 
-- **Games:** pick a hero, a world, something to jump over and something to collect, how fast and how many to win. Press play and tap (or press space) to jump.
+- **Games (Game Builder):** kids learn to design a game by completing missions. They draw the level on a grid (blocks, start, finish flag, treasure, enemies), then write the rules with picture blocks ("When 🐱 touches 🏁 → You win!"). The game plays exactly by their rules. Each mission checks their game, unlocks a new tool, and asks them to test it by playing. Ages 5–8 get 6 missions; 9–12 add timers and moving enemies; 13–16 add lives and score targets. A game can be shared with friends once its missions are done. See `src/lib/builder.ts`.
 - **Shows:** add scenes, pick a background, up to three characters per scene and what each one says. Press play and tap through it like a puppet show.
 - Friends invited as helpers can change the game or show too. Everyone else who can see it can play it.
 
