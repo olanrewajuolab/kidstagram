@@ -1,4 +1,5 @@
 // What a kid builds inside a project. Stored in projects.content (jsonb).
+import { cleanLevel, emptyLevel, type BuilderProgress, type GameRule, type RuleAction, type RuleEvent } from './builder.ts';
 
 export type GameTheme = 'space' | 'jungle' | 'ocean' | 'city' | 'candy';
 
@@ -8,9 +9,17 @@ export type GameContent = {
   theme: GameTheme;
   obstacle: string;
   collectible: string;
-  speed: 1 | 2 | 3;
-  goal: number;
   winMessage: string;
+  /** The level the kid drew: ROWS strings of COLS tiles. See builder.ts. */
+  level: string[];
+  /** The kid's picture-block rules: "When … → …". */
+  rules: GameRule[];
+  /** Seconds on the clock, 0 for no timer. */
+  timer: number;
+  lives: number;
+  scoreGoal: number;
+  enemySpeed: 1 | 2 | 3;
+  progress: BuilderProgress;
 };
 
 export type ShowBackground = 'meadow' | 'night' | 'castle' | 'beach' | 'space' | 'stage';
@@ -53,7 +62,10 @@ export function newScene(): ShowScene {
 
 export function defaultContent(kind: 'game' | 'show'): ProjectContent {
   if (kind === 'game') {
-    return { type: 'game', hero: '🐱', theme: 'space', obstacle: '🪨', collectible: '⭐', speed: 2, goal: 10, winMessage: 'You win!' };
+    return {
+      type: 'game', hero: '🐱', theme: 'jungle', obstacle: '👾', collectible: '⭐', winMessage: 'You win!',
+      level: emptyLevel(), rules: [], timer: 0, lives: 1, scoreGoal: 5, enemySpeed: 2, progress: { won: false, done: [] },
+    };
   }
   return { type: 'show', scenes: [newScene()] };
 }
@@ -66,7 +78,28 @@ export function readContent(kind: 'game' | 'show', raw: unknown): ProjectContent
     const scenes = (raw as ShowContent).scenes;
     return { type: 'show', scenes: Array.isArray(scenes) && scenes.length ? scenes : (base as ShowContent).scenes };
   }
-  return { ...(base as GameContent), ...(raw as GameContent) };
+  // Older games (from before the Game Builder) keep their hero, theme and pictures and get a fresh level.
+  const g = { ...(base as GameContent), ...(raw as GameContent) };
+  const events: RuleEvent[] = ['touch_flag', 'touch_coin', 'touch_enemy', 'fall', 'time_up', 'score_is'];
+  const actions: RuleAction[] = ['win', 'lose', 'add_point', 'lose_life'];
+  return {
+    ...g,
+    level: cleanLevel(g.level),
+    rules: Array.isArray(g.rules) ? g.rules.filter((r) => r && events.includes(r.when) && actions.includes(r.then)).slice(0, 20) : [],
+    timer: clampInt(g.timer, 0, 300),
+    lives: clampInt(g.lives, 1, 5) || 1,
+    scoreGoal: clampInt(g.scoreGoal, 1, 99) || 5,
+    enemySpeed: ([1, 2, 3] as const).includes(g.enemySpeed) ? g.enemySpeed : 2,
+    progress: {
+      won: Boolean(g.progress?.won),
+      done: Array.isArray(g.progress?.done) ? g.progress.done.filter((d) => typeof d === 'string') : [],
+    },
+  };
+}
+
+function clampInt(v: unknown, min: number, max: number): number {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min;
 }
 
 /** All the words inside the content, for the safety check before saving. */

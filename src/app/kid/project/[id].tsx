@@ -20,6 +20,8 @@ import {
 } from '@/lib/api';
 import { ageBand, bandRules } from '@/lib/age';
 import { useAuth } from '@/lib/auth';
+import { missionStatus } from '@/lib/builder';
+import { readContent } from '@/lib/content';
 import { findTextProblem, friendlyError, problemMessages } from '@/lib/moderation';
 import { avatars, commentPresets } from '@/lib/presets';
 import type { Comment, Profile, Project, Step } from '@/lib/types';
@@ -77,6 +79,10 @@ export default function ProjectScreen() {
   if (!project) return <Screen><ErrorText message={error} /></Screen>;
 
   const isOwner = project.owner_id === me;
+  // Games can be shared once the kid has finished (and played) all their missions.
+  const built = readContent(project.kind, project.content);
+  const gameReady =
+    built.type !== 'game' || missionStatus(profile?.birth_month ? ageBand(profile.birth_month) : 'middle', built).allDone;
   const canEdit = isOwner || helpers.some((h) => h.id === me);
   const invitable = friends.filter((f) => !helpers.some((h) => h.id === f.id));
 
@@ -105,7 +111,11 @@ export default function ProjectScreen() {
         {isOwner ? (
           <Chip
             label={project.visibility === 'friends' ? '👫 Friends can see' : '🔒 Just me'}
-            onPress={() => guard(() => updateProject(id, { visibility: project.visibility === 'friends' ? 'private' : 'friends' }))}
+            onPress={() =>
+              project.visibility === 'private' && !gameReady
+                ? setError('Finish all your game missions first. Then you can share your game with friends!')
+                : guard(() => updateProject(id, { visibility: project.visibility === 'friends' ? 'private' : 'friends' }))
+            }
           />
         ) : (
           <ReportLink onReport={() => report(me, 'project', id, 'Reported from project page')} />
